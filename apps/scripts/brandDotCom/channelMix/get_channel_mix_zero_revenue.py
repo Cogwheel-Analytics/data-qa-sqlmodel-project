@@ -4,9 +4,12 @@ from apps.database import get_session
 # Raw SQL query to find channel mix records with revenue = 0
 query = text(
     """
-    SELECT * 
-    FROM public.channel_mix 
-    WHERE revenue = 0 AND hotel_id IS NOT NULL;
+    SELECT cm.*
+FROM public.channel_mix cm
+JOIN public.hotel hotel ON cm.hotel_id = hotel.id
+WHERE cm.revenue = 0
+  AND cm.hotel_id IS NOT NULL
+  AND hotel.is_active = true;
 """
 )
 
@@ -25,6 +28,7 @@ zero_revenue_channel_mix = get_channel_mix_zero_revenue()
 # Printing the results
 if zero_revenue_channel_mix:
     for row in zero_revenue_channel_mix:
-        print(row)  # Each row will be a tuple with the column data
+        print(row)
+    print(f"\nTotal records: {len(zero_revenue_channel_mix)}")
 else:
     print("No channel mix records found with zero revenue.")
