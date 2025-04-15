@@ -12,20 +12,16 @@ query = text(
 )
 
 
-# Function to retrieve March 2024 data from the channel_mix table
 def get_march_2024_channel_mix():
     with get_session() as session:
-        # Execute the raw SQL query
         result = session.execute(query).fetchall()
         return result
 
 
-# Example usage
 channel_mix_data_march_2024 = get_march_2024_channel_mix()
 
-# Printing the results
 if channel_mix_data_march_2024:
     for row in channel_mix_data_march_2024:
-        print(row)  # Each row will be a tuple with the column data
+        print(row)
 else:
     print("No data found for March 2024 in the channel_mix table.")

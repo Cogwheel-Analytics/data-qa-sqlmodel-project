@@ -13,12 +13,11 @@ def get_all_channel_mix():
         return result
 
 
-# Example usage
 channel_mix_data = get_all_channel_mix()
 
-# Printing the results
+
 if channel_mix_data:
     for row in channel_mix_data:
-        print(row)  # Each row will be a tuple with the column data
+        print(row)
 else:
     print("No data found in channel_mix table.")

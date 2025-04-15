@@ -11,18 +11,14 @@ query = text(
 )
 
 
-# Function to retrieve the monthly total revenue for March 2024
 def get_march_2024_total_revenue():
     with get_session() as session:
-        # Execute the raw SQL query
         result = session.execute(query).fetchone()
         return result
 
 
-# Example usage
 total_revenue_march_2024 = get_march_2024_total_revenue()
 
-# Printing the results
 if total_revenue_march_2024 and total_revenue_march_2024[0]:
     print(f"Total Revenue for March 2024: {total_revenue_march_2024[0]}")
 else:

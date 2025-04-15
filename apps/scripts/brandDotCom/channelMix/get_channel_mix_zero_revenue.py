@@ -22,10 +22,8 @@ def get_channel_mix_zero_revenue():
         return result
 
 
-# Example usage
 zero_revenue_channel_mix = get_channel_mix_zero_revenue()
 
-# Printing the results
 if zero_revenue_channel_mix:
     for row in zero_revenue_channel_mix:
         print(row)

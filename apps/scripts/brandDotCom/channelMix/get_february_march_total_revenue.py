@@ -12,10 +12,8 @@ query = text(
 )
 
 
-# Function to retrieve the total revenue for February and March 2024
 def get_february_march_total_revenue():
     with get_session() as session:
-        # Execute the raw SQL query
         result = session.execute(query).fetchone()
         return result
 
@@ -23,7 +21,6 @@ def get_february_march_total_revenue():
 # Example usage
 february_march_revenue = get_february_march_total_revenue()
 
-# Printing the results and calculating the difference
 if february_march_revenue:
     february_revenue = february_march_revenue[0] if february_march_revenue[0] else 0
     march_revenue = february_march_revenue[1] if february_march_revenue[1] else 0
