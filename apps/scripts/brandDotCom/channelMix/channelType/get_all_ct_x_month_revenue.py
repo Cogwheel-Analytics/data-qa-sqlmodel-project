@@ -10,8 +10,7 @@ query = text(
                 DATE_TRUNC ('month', CURRENT_DATE) - INTERVAL '1 month' * i,
                 'YYYY-MM'
             ) AS month,
-            DATE_TRUNC ('month', CURRENT_DATE) - INTERVAL '1 month' * i AS month_start,
-            DATE_TRUNC ('month', CURRENT_DATE) - INTERVAL '1 month' * (i - 1) AS month_end
+            DATE_TRUNC ('month', CURRENT_DATE) - INTERVAL '1 month' * i AS month_start
         FROM
             generate_series (1, 6) AS i -- start from 1 to skip current month
     ),
@@ -37,21 +36,27 @@ query = text(
         GROUP BY
             DATE_TRUNC ('month', cm.date),
             cm.channel_type_id
+    ),
+    combined AS (
+        SELECT
+            m.month_start,
+            TO_CHAR(m.month_start, 'YYYY-MM') AS month,
+            ct.channel_type_id,
+            ct.channel_type_name,
+            COALESCE(rd.total_revenue, 0) AS total_revenue
+        FROM months m
+        CROSS JOIN channel_types ct
+        LEFT JOIN revenue_data rd
+            ON rd.month_start = m.month_start
+            AND rd.channel_type_id = ct.channel_type_id
     )
 SELECT
-    TO_CHAR (m.month_start, 'YYYY-MM') AS month,
-    ct.channel_type_name,
-    COALESCE(rd.total_revenue, 0) AS total_revenue
-FROM
-    months m
-    CROSS JOIN channel_types ct
-    LEFT JOIN revenue_data rd ON rd.month_start = m.month_start
-    AND rd.channel_type_id = ct.channel_type_id
-ORDER BY
-    m.month_start ASC,
-    ct.channel_type_name;
-
-
+    month,
+    channel_type_name,
+    total_revenue,
+    AVG(total_revenue) OVER (PARTITION BY channel_type_name) AS average_revenue
+FROM combined
+ORDER BY month_start ASC, channel_type_name;
     """
 )
 
@@ -67,6 +72,8 @@ monthly_channel_revenue = get_monthly_channel_type_revenue_last_x_months()
 if monthly_channel_revenue:
     print("Revenue by Month & Channel Type (Last X Months):\n")
     for row in monthly_channel_revenue:
-        print(f"{row.month} - {row.channel_type_name}: {row.total_revenue}")
+        print(
+            f"{row.month} - {row.channel_type_name}: Total Revenue: {row.total_revenue}, Average Revenue: {row.average_revenue}"
+        )
 else:
     print("No revenue data found.")
