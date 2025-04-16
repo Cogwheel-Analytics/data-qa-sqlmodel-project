@@ -7,12 +7,12 @@ query = text(
     months AS (
         SELECT
             TO_CHAR (
-                DATE_TRUNC ('month', CURRENT_DATE) - INTERVAL '1 month' * i,
+                DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '1 month' * i,
                 'YYYY-MM'
             ) AS month,
-            DATE_TRUNC ('month', CURRENT_DATE) - INTERVAL '1 month' * i AS month_start
+            DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '1 month' * i AS month_start
         FROM
-            generate_series (1, 6) AS i -- start from 1 to skip current month
+            generate_series(1, 6) AS i
     ),
     channel_types AS (
         SELECT
@@ -23,7 +23,7 @@ query = text(
     ),
     revenue_data AS (
         SELECT
-            DATE_TRUNC ('month', cm.date) AS month_start,
+            DATE_TRUNC('month', cm.date) AS month_start,
             cm.channel_type_id,
             SUM(cm.revenue) AS total_revenue
         FROM
@@ -31,10 +31,10 @@ query = text(
             JOIN public.hotel h ON cm.hotel_id = h.id
         WHERE
             h.is_active = true
-            AND cm.date >= DATE_TRUNC ('month', CURRENT_DATE) - INTERVAL '7 month'
-            AND cm.date < DATE_TRUNC ('month', CURRENT_DATE)
+            AND cm.date >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '6 month'
+            AND cm.date < DATE_TRUNC('month', CURRENT_DATE)
         GROUP BY
-            DATE_TRUNC ('month', cm.date),
+            DATE_TRUNC('month', cm.date),
             cm.channel_type_id
     ),
     combined AS (
@@ -54,26 +54,33 @@ SELECT
     month,
     channel_type_name,
     total_revenue,
-    AVG(total_revenue) OVER (PARTITION BY channel_type_name) AS average_revenue
+    ROUND(AVG(total_revenue) OVER (PARTITION BY channel_type_name)::numeric, 2) AS average_revenue,
+    ROUND((total_revenue - AVG(total_revenue) OVER (PARTITION BY channel_type_name))::numeric, 2) AS revenue_difference,
+    ROUND((total_revenue / NULLIF(AVG(total_revenue) OVER (PARTITION BY channel_type_name), 0))::numeric, 2) AS revenue_ratio
 FROM combined
 ORDER BY month_start ASC, channel_type_name;
+
     """
 )
 
 
-def get_monthly_channel_type_revenue_last_x_months():
+def get_monthly_channel_type_revenue_with_diff_ratio():
     with get_session() as session:
         result = session.execute(query).fetchall()
         return result
 
 
-monthly_channel_revenue = get_monthly_channel_type_revenue_last_x_months()
+monthly_channel_revenue = get_monthly_channel_type_revenue_with_diff_ratio()
 
 if monthly_channel_revenue:
-    print("Revenue by Month & Channel Type (Last X Months):\n")
+    print("Total Revenue by Month & Channel Type (with Avg, Difference & Ratio):\n")
     for row in monthly_channel_revenue:
         print(
-            f"{row.month} - {row.channel_type_name}: Total Revenue: {row.total_revenue}, Average Revenue: {row.average_revenue}"
+            f"{row.month} - {row.channel_type_name}: "
+            f"Total Revenue: {row.total_revenue}, "
+            f"Avg: {row.average_revenue}, "
+            f"Diff: {row.revenue_difference}, "
+            f"Ratio: {row.revenue_ratio}"
         )
 else:
     print("No revenue data found.")
