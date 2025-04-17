@@ -5,17 +5,23 @@ from apps.database import get_session
 query = text(
     """
     SELECT
-        TO_CHAR(DATE_TRUNC('month', st.date), 'YYYY-MM') AS month,
-        s.name AS source_name,
-        SUM(st.revenue) AS total_revenue
-    FROM public.source_traffic st
+    TO_CHAR (DATE_TRUNC ('month', st.date), 'YYYY-MM') AS month,
+    s.name AS source_name,
+    SUM(st.revenue) AS total_revenue
+FROM
+    public.source_traffic st
     JOIN public.source s ON st.source_id = s.id
     JOIN public.hotel h ON st.hotel_id = h.id
-    WHERE h.is_active = true
-      AND st.date >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '6 month'
-      AND st.date < DATE_TRUNC('month', CURRENT_DATE)
-    GROUP BY month, s.name
-    ORDER BY month, s.name;
+WHERE
+    h.is_active = true
+    AND st.date >= DATE_TRUNC ('month', CURRENT_DATE) - INTERVAL '6 month'
+    AND st.date < DATE_TRUNC ('month', CURRENT_DATE)
+GROUP BY
+    month,
+    s.name
+ORDER BY
+    month,
+    s.name;
     """
 )
 
