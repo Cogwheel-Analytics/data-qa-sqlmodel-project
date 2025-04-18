@@ -1,6 +1,6 @@
+from collections import defaultdict
 from sqlmodel import text
 from apps.database import get_session
-
 
 query = text(
     """
@@ -35,10 +35,27 @@ def get_last_6_months_source_revenue():
 source_revenue_data = get_last_6_months_source_revenue()
 
 if source_revenue_data:
-    print("Last 6 Months Revenue by Source:\n")
+    print("Last 6 Months Revenue by Source (with Average Revenue):\n")
+
+    # Calculate total revenue and count per source
+    total_per_source = defaultdict(float)
+    count_per_source = defaultdict(int)
+
     for row in source_revenue_data:
+        total_per_source[row.source_name] += row.total_revenue
+        count_per_source[row.source_name] += 1
+
+    # Calculate average revenue per source
+    avg_per_source = {
+        source: total / count_per_source[source]
+        for source, total in total_per_source.items()
+    }
+
+    for row in source_revenue_data:
+        avg_rev = avg_per_source[row.source_name]
         print(
-            f"Month: {row.month}, Source: {row.source_name}, Revenue: {row.total_revenue}"
+            f"Month: {row.month}, Source: {row.source_name}, Revenue: {row.total_revenue:.2f}, Avg Revenue: {avg_rev:.2f}"
         )
+
 else:
     print("No source revenue data found for the last 6 months.")
