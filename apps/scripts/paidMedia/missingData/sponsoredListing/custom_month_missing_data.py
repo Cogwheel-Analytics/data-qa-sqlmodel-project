@@ -61,7 +61,9 @@ for row in missing_rows:
     hotel_months[row.hotel_code].append(row.month)
 
 if hotel_months:
-    print("Hotels with Missing Meta Search (Paid Media) Data for Custom Months:\n")
+    print(
+        "Hotels with Missing Sponsored Listing (Paid Media) Data for Custom Months:\n"
+    )
     for hotel_code, months in hotel_months.items():
         print(f"Hotel Code: {hotel_code}, Missing Months: {months}")
 else:
