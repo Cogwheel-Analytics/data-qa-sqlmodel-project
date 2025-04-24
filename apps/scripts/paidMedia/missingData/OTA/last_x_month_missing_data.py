@@ -36,8 +36,8 @@ def get_query(source_filter: list[str] | None = None):
     ),
     ota_paid_media AS (
         SELECT
-            hotel_id,
-            DATE_TRUNC ('month', date) AS month_start,
+            pm.hotel_id,
+            DATE_TRUNC ('month', pm.date) AS month_start,
             COUNT(*) AS ota_entries
         FROM public.paid_media pm
         JOIN public.media_channel mc ON pm.media_id = mc.id
@@ -87,7 +87,7 @@ print("=== Filter Used ===")
 if source_filter:
     print(f"Filtered Sources: {source_filter}")
 else:
-    print("Filtered Sources: None (All Meta Search sources included)")
+    print("Filtered Sources: None (All OTA sources included)")
 
 print("\n=== Result ===")
 if hotel_months:
