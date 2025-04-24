@@ -2,13 +2,26 @@ from collections import defaultdict
 from sqlmodel import text
 from apps.database import get_session
 
+DEFAULT_META_SOURCES = [
+    "Google Hotel Ads (MetaSearch)",
+    "Kayak MetaSearch",
+    "SABRE",
+    "TripAdvisor MetaSearch",
+    "Sponsored Ads",
+    "Trivago MetaSearch",
+]
 
-def get_missing_meta_search_for_custom_months(month_list):
-    # Convert months to first-day-of-month format: "YYYY-MM-01"
+
+def get_missing_meta_search_for_custom_months(month_list, source_filter=None):
     formatted_months = [f"{m}-01" for m in month_list]
 
+    source_filter_sql = ""
+    if source_filter:
+        source_placeholders = ", ".join([f"'{src}'" for src in source_filter])
+        source_filter_sql = f"AND pms.normalized_source IN ({source_placeholders})"
+
     query = text(
-        """
+        f"""
         WITH months AS (
             SELECT TO_DATE(m, 'YYYY-MM-DD') AS month_start
             FROM UNNEST(:month_list) AS m
@@ -25,16 +38,18 @@ def get_missing_meta_search_for_custom_months(month_list):
         ),
         meta_search_paid_media AS (
             SELECT
-                hotel_id,
-                DATE_TRUNC('month', date) AS month_start,
+                pm.hotel_id,
+                DATE_TRUNC('month', pm.date) AS month_start,
                 COUNT(*) AS meta_entries
             FROM public.paid_media pm
             JOIN public.media_channel mc ON pm.media_id = mc.id
+            LEFT JOIN public.paid_media_source pms ON pm.paid_media_source_id = pms.id
             WHERE mc.name = 'METASEARCH'
-              AND DATE_TRUNC('month', date) IN (
+              {source_filter_sql}
+              AND DATE_TRUNC('month', pm.date) IN (
                   SELECT month_start FROM months
               )
-            GROUP BY hotel_id, DATE_TRUNC('month', date)
+            GROUP BY pm.hotel_id, DATE_TRUNC('month', pm.date)
         ),
         missing_data AS (
             SELECT hmc.hotel_code, TO_CHAR(hmc.month_start, 'YYYY-MM') AS month
@@ -54,7 +69,10 @@ def get_missing_meta_search_for_custom_months(month_list):
 
 
 custom_months = ["2023-12", "2025-01", "2025-03"]
-missing_rows = get_missing_meta_search_for_custom_months(custom_months)
+# Optionally set this to None if you want all sources
+SOURCE_FILTER = ["Google Hotel Ads (MetaSearch)"]
+
+missing_rows = get_missing_meta_search_for_custom_months(custom_months, SOURCE_FILTER)
 
 hotel_months = defaultdict(list)
 for row in missing_rows:
