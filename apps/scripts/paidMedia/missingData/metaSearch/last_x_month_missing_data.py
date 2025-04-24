@@ -74,15 +74,23 @@ def get_hotels_with_missing_paid_media(source_filter: list[str] | None = None):
 
 
 # For specific sources: e.g., ["TripAdvisor MetaSearch", "Google Hotel Ads (MetaSearch)"]
-SOURCE_FILTER = ["Google Hotel Ads (MetaSearch)"]
+source_filter = ["Google Hotel Ads (MetaSearch)"]
 
-missing_rows = get_hotels_with_missing_paid_media(SOURCE_FILTER)
+missing_rows = get_hotels_with_missing_paid_media(source_filter)
 
 
 hotel_months = defaultdict(list)
 for row in missing_rows:
     hotel_months[row.hotel_code].append(row.month)
 
+
+print("=== Filter Used ===")
+if source_filter:
+    print(f"Filtered Sources: {source_filter}")
+else:
+    print("Filtered Sources: None (All Meta Search sources included)")
+
+print("\n=== Result ===")
 if hotel_months:
     print("Hotels with Missing Meta Search (Paid Media) Data (Last 6 Months):\n")
     for hotel_code, months in hotel_months.items():

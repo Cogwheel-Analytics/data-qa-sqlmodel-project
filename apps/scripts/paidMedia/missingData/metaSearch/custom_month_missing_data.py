@@ -69,17 +69,24 @@ def get_missing_meta_search_for_custom_months(month_list, source_filter=None):
 
 
 custom_months = ["2023-12", "2025-01", "2025-03"]
-# Optionally set this to None if you want all sources
-SOURCE_FILTER = ["Google Hotel Ads (MetaSearch)"]
+source_filter = ["Google Hotel Ads (MetaSearch)"]
 
-missing_rows = get_missing_meta_search_for_custom_months(custom_months, SOURCE_FILTER)
+missing_rows = get_missing_meta_search_for_custom_months(custom_months, source_filter)
 
 hotel_months = defaultdict(list)
 for row in missing_rows:
     hotel_months[row.hotel_code].append(row.month)
 
+print("=== Filter Used ===")
+print(f"Custom Months: {custom_months}")
+if source_filter:
+    print(f"Filtered Sources: {source_filter}")
+else:
+    print("Filtered Sources: None (All Meta Search sources included)")
+
+print("\n=== Result ===")
 if hotel_months:
-    print("Hotels with Missing Meta Search (Paid Media) Data for Custom Months:\n")
+    print("Hotels with Missing Meta Search (Paid Media) Data:\n")
     for hotel_code, months in hotel_months.items():
         print(f"Hotel Code: {hotel_code}, Missing Months: {months}")
 else:
