@@ -5,7 +5,8 @@ from prophet import Prophet
 import matplotlib.pyplot as plt
 import os
 import re
-import matplotlib.dates as mdates
+
+# import matplotlib.dates as mdates
 
 TARGET_HOTEL_CODE = "BOSFRUP"
 
@@ -115,8 +116,8 @@ def analyze_revenue_trends(df, hotel_code: str):
             )
 
         # Setup x-axis to show month names
-        ax.xaxis.set_major_locator(mdates.MonthLocator())
-        ax.xaxis.set_major_formatter(mdates.DateFormatter("%b %Y"))
+        # ax.xaxis.set_major_locator(mdates.MonthLocator())
+        # ax.xaxis.set_major_formatter(mdates.DateFormatter("%b %Y"))
         fig.autofmt_xdate()
 
         plt.title(f"{hotel_code} - {channel}")
