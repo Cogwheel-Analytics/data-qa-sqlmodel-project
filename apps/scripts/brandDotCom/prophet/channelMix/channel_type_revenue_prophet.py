@@ -21,13 +21,12 @@ def fetch_channel_type_revenue(hotel_code: str):
         FROM public.channel_mix cm
         JOIN public.hotel h ON cm.hotel_id = h.id
         JOIN public.channel_type ct ON cm.channel_type_id = ct.id
-        WHERE cm.date >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '12 month'
+        WHERE cm.date >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '24 month'
         AND cm.date < DATE_TRUNC('month', CURRENT_DATE)
         AND h.code = :hotel_code
         AND h.is_active = TRUE
         GROUP BY h.code, ct.name, DATE_TRUNC('month', cm.date)
         ORDER BY ct.name, month
-
         """
     )
     with get_session() as session:
@@ -43,8 +42,6 @@ def analyze_revenue_trends(df, hotel_code: str):
     grouped = df.groupby(["channel_type"])
     output_dir = f"forecast_plots/{hotel_code}"
     os.makedirs(output_dir, exist_ok=True)
-
-    global_max_revenue = df["revenue"].max() * 1.1  # add 10% padding for headroom
 
     for channel, group in grouped:
         prophet_df = (
@@ -68,12 +65,22 @@ def analyze_revenue_trends(df, hotel_code: str):
         fig = model.plot(forecast)
         ax = fig.gca()
 
+        # Set dynamic y-axis limit based on both actual and forecast
+        full_revenue = pd.concat(
+            [
+                prophet_df[["ds", "y"]],
+                forecast[["ds", "yhat"]].rename(columns={"yhat": "y"}),
+            ]
+        )
+        global_max_revenue = full_revenue["y"].max() * 1.2
         ax.set_ylim(0, global_max_revenue)
 
+        # Plot actual revenue points
         ax.scatter(
             prophet_df["ds"], prophet_df["y"], color="red", label="Actual Revenue"
         )
 
+        # Annotate actual revenue values
         for x, y in zip(prophet_df["ds"], prophet_df["y"]):
             ax.annotate(
                 f"{y:,.0f}",
@@ -85,14 +92,37 @@ def analyze_revenue_trends(df, hotel_code: str):
                 color="black",
             )
 
-        # Set month-wise x-axis formatting
+        # Plot forecasted future revenue points
+        future_forecast = forecast[forecast["ds"] > prophet_df["ds"].max()]
+        ax.scatter(
+            future_forecast["ds"],
+            future_forecast["yhat"],
+            color="blue",
+            marker="x",
+            label="Forecasted Revenue",
+        )
+
+        # Annotate forecasted revenue values
+        for x, y in zip(future_forecast["ds"], future_forecast["yhat"]):
+            ax.annotate(
+                f"{y:,.0f}",
+                (x, y),
+                textcoords="offset points",
+                xytext=(0, 5),
+                ha="center",
+                fontsize=8,
+                color="blue",
+            )
+
+        # Setup x-axis to show month names
         ax.xaxis.set_major_locator(mdates.MonthLocator())
         ax.xaxis.set_major_formatter(mdates.DateFormatter("%b %Y"))
         fig.autofmt_xdate()
 
-        plt.title(f"{hotel_code} - {str(channel)}")
+        plt.title(f"{hotel_code} - {channel}")
         plt.legend()
         fig.tight_layout()
+
         safe_channel_name = re.sub(r"[^\w\-_.]", "_", str(channel))
         fig.savefig(f"{output_dir}/{safe_channel_name}.png")
         plt.close()
