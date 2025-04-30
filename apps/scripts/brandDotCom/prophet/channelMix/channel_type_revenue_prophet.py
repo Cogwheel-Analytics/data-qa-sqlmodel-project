@@ -6,8 +6,6 @@ import matplotlib.pyplot as plt
 import os
 import re
 
-# import matplotlib.dates as mdates
-
 TARGET_HOTEL_CODE = "BOSFRUP"
 
 
@@ -22,7 +20,7 @@ def fetch_channel_type_revenue(hotel_code: str):
         FROM public.channel_mix cm
         JOIN public.hotel h ON cm.hotel_id = h.id
         JOIN public.channel_type ct ON cm.channel_type_id = ct.id
-        WHERE cm.date >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '24 month'
+        WHERE cm.date >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '36 month'
         AND cm.date < DATE_TRUNC('month', CURRENT_DATE)
         AND h.code = :hotel_code
         AND h.is_active = TRUE
@@ -37,6 +35,25 @@ def fetch_channel_type_revenue(hotel_code: str):
             columns=["hotel_code", "channel_type", "month", "revenue"],
         )
     return df
+
+
+def evaluate_forecast(prophet_df, model, horizon_months=3):
+    train_df = prophet_df[:-horizon_months]
+    test_df = prophet_df[-horizon_months:]
+
+    model.fit(train_df)
+    future = model.make_future_dataframe(periods=horizon_months, freq="MS")
+    forecast = model.predict(future)
+
+    forecast_df = forecast[["ds", "yhat"]].merge(test_df, on="ds", how="inner")
+
+    mae = (forecast_df["yhat"] - forecast_df["y"]).abs().mean()
+    rmse = ((forecast_df["yhat"] - forecast_df["y"]) ** 2).mean() ** 0.5
+    mape = (
+        abs((forecast_df["yhat"] - forecast_df["y"]) / forecast_df["y"])
+    ).mean() * 100
+
+    return mae, rmse, mape
 
 
 def analyze_revenue_trends(df, hotel_code: str):
@@ -55,9 +72,26 @@ def analyze_revenue_trends(df, hotel_code: str):
             print(f"Skipping {hotel_code} - {channel} (not enough data)")
             continue
 
-        model = Prophet(
-            yearly_seasonality=True, weekly_seasonality=False, daily_seasonality=False
+        # Evaluation using a temporary model instance
+        eval_model = Prophet(
+            yearly_seasonality=True,
+            weekly_seasonality=False,
+            daily_seasonality=False,
         )
+        mae, rmse, mape = evaluate_forecast(prophet_df, eval_model)
+
+        # New model for actual forecasting
+        model = Prophet(
+            yearly_seasonality=True,
+            weekly_seasonality=False,
+            daily_seasonality=False,
+        )
+        print(
+            f"Forecast Evaluation for {hotel_code} - {channel}:\n"
+            f"MAE: {mae:.2f}, RMSE: {rmse:.2f}, MAPE: {mape:.2f}%\n"
+        )
+
+        # Refit model on full data
         model.fit(prophet_df)
 
         future = model.make_future_dataframe(periods=3, freq="MS")
@@ -66,7 +100,7 @@ def analyze_revenue_trends(df, hotel_code: str):
         fig = model.plot(forecast)
         ax = fig.gca()
 
-        # Set dynamic y-axis limit based on both actual and forecast
+        # Set dynamic y-axis limit
         full_revenue = pd.concat(
             [
                 prophet_df[["ds", "y"]],
@@ -76,12 +110,11 @@ def analyze_revenue_trends(df, hotel_code: str):
         global_max_revenue = full_revenue["y"].max() * 1.2
         ax.set_ylim(0, global_max_revenue)
 
-        # Plot actual revenue points
+        # Plot actual revenue
         ax.scatter(
             prophet_df["ds"], prophet_df["y"], color="red", label="Actual Revenue"
         )
 
-        # Annotate actual revenue values
         for x, y in zip(prophet_df["ds"], prophet_df["y"]):
             ax.annotate(
                 f"{y:,.0f}",
@@ -93,7 +126,7 @@ def analyze_revenue_trends(df, hotel_code: str):
                 color="black",
             )
 
-        # Plot forecasted future revenue points
+        # Forecasted future revenue
         future_forecast = forecast[forecast["ds"] > prophet_df["ds"].max()]
         ax.scatter(
             future_forecast["ds"],
@@ -103,7 +136,6 @@ def analyze_revenue_trends(df, hotel_code: str):
             label="Forecasted Revenue",
         )
 
-        # Annotate forecasted revenue values
         for x, y in zip(future_forecast["ds"], future_forecast["yhat"]):
             ax.annotate(
                 f"{y:,.0f}",
@@ -115,11 +147,7 @@ def analyze_revenue_trends(df, hotel_code: str):
                 color="blue",
             )
 
-        # Setup x-axis to show month names
-        # ax.xaxis.set_major_locator(mdates.MonthLocator())
-        # ax.xaxis.set_major_formatter(mdates.DateFormatter("%b %Y"))
         fig.autofmt_xdate()
-
         plt.title(f"{hotel_code} - {channel}")
         plt.legend()
         fig.tight_layout()
