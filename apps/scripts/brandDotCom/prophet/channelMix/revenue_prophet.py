@@ -58,7 +58,7 @@ def evaluate_forecast(prophet_df, model, horizon_months=3):
 
 def analyze_revenue_trends(df, hotel_code: str):
     grouped = df.groupby(["channel_type"])
-    output_dir = f"forecast_plots/{hotel_code}"
+    output_dir = f"forecast_plots/revenue/{hotel_code}"
     os.makedirs(output_dir, exist_ok=True)
 
     for channel, group in grouped:
