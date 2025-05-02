@@ -19,7 +19,7 @@ def fetch_data():
         FROM public.channel_mix cm
         JOIN public.hotel h ON cm.hotel_id = h.id
         JOIN public.channel_type ct ON cm.channel_type_id = ct.id
-        WHERE cm.date >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '24 month'
+        WHERE cm.date >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '36 month'
         AND cm.date < DATE_TRUNC('month', CURRENT_DATE)
         AND h.code = 'BOSFRUP'
         AND h.is_active = TRUE
@@ -46,19 +46,40 @@ def evaluate_and_plot(df: pd.DataFrame, hotel_code: str, output_dir: str):
             print(f"Skipping {channel} (not enough data)")
             continue
 
+        # OPTIONAL: Remove extreme outliers (e.g., negative or very high values)
+        upper_limit = df_channel["y"].quantile(0.99)
+        lower_limit = df_channel["y"].quantile(0.01)
+        df_channel = df_channel[
+            (df_channel["y"] >= lower_limit) & (df_channel["y"] <= upper_limit)
+        ]
+
         # Train/test split
         split_index = int(len(df_channel) * 0.75)
-        train = df_channel.iloc[:split_index]
-        test = df_channel.iloc[split_index:]
+        train = df_channel.iloc[:split_index].copy()
+        test = df_channel.iloc[split_index:].copy()
 
-        # Fit Prophet model
-        model = Prophet(yearly_seasonality=True)
+        # Ensure 'cap' column is not present (to avoid logistic growth issues)
+        if "cap" in train.columns:
+            train = train.drop(columns=["cap"])
+
+        # Fit Prophet model with improved settings
+        model = Prophet(
+            yearly_seasonality=True,
+            seasonality_mode="multiplicative",
+            changepoint_prior_scale=0.2,
+            seasonality_prior_scale=5.0,
+        )
         model.fit(train)
 
         # Forecast
         future = model.make_future_dataframe(periods=len(test), freq="MS")
         forecast = model.predict(future)
 
+        # Clip yhat to within train data range
+        y_min, y_max = train["y"].min(), train["y"].max()
+        forecast["yhat"] = forecast["yhat"].clip(lower=y_min, upper=y_max)
+
+        # Ensure forecast includes all test dates
         forecast = forecast[forecast["ds"] <= df_channel["ds"].max()]
 
         # Evaluation
@@ -98,6 +119,19 @@ def evaluate_and_plot(df: pd.DataFrame, hotel_code: str, output_dir: str):
             test["ds"].iloc[0], color="red", linestyle="--", label="Train/Test Split"
         )
 
+        # Show all monthly ticks on x-axis
+        all_months = pd.date_range(
+            start=df_channel["ds"].min(), end=df_channel["ds"].max(), freq="MS"
+        )
+        ax = fig.gca()
+        ax.set_xticks(all_months)
+        ax.set_xticklabels(
+            [d.strftime("%b %Y") for d in all_months],
+            rotation=45,
+            ha="right",
+            fontsize=8,
+        )
+
         # Add title and legend
         plt.title(f"Forecast vs Actual for {channel}")
         plt.legend()
@@ -105,7 +139,7 @@ def evaluate_and_plot(df: pd.DataFrame, hotel_code: str, output_dir: str):
         # Save the plot
         safe_channel = re.sub(r"[^\w\-_.]", "_", channel)
         filename = f"{output_dir}/{safe_channel}.png"
-        fig.savefig(filename)
+        fig.savefig(filename, bbox_inches="tight")
         plt.close()
         print(f"Saved plot: {filename}")
 
