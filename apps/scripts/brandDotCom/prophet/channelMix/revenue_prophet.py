@@ -19,7 +19,7 @@ def fetch_data():
         FROM public.channel_mix cm
         JOIN public.hotel h ON cm.hotel_id = h.id
         JOIN public.channel_type ct ON cm.channel_type_id = ct.id
-        WHERE cm.date >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '36 month'
+        WHERE cm.date >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '24 month'
         AND cm.date < DATE_TRUNC('month', CURRENT_DATE)
         AND h.code = 'BOSFRUP'
         AND h.is_active = TRUE
@@ -52,18 +52,24 @@ def evaluate_and_plot(df: pd.DataFrame, hotel_code: str, output_dir: str):
         test = df_channel.iloc[split_index:]
 
         # Fit Prophet model
-        model = Prophet(yearly_seasonality="auto")
+        model = Prophet(yearly_seasonality=True)
         model.fit(train)
 
         # Forecast
         future = model.make_future_dataframe(periods=len(test), freq="MS")
         forecast = model.predict(future)
 
+        forecast = forecast[forecast["ds"] <= df_channel["ds"].max()]
+
         # Evaluation
         forecast_filtered = (
             forecast[["ds", "yhat"]].set_index("ds").join(test.set_index("ds"))
         )
         forecast_filtered.dropna(inplace=True)
+
+        if forecast_filtered.empty:
+            print(f"Skipping {channel} (no overlapping forecast & test data)")
+            continue
 
         mae = mean_absolute_error(forecast_filtered["y"], forecast_filtered["yhat"])
         mse = mean_squared_error(forecast_filtered["y"], forecast_filtered["yhat"])
@@ -83,13 +89,20 @@ def evaluate_and_plot(df: pd.DataFrame, hotel_code: str, output_dir: str):
 
         # Plot and save
         fig = model.plot(forecast)
-        plt.title(f"Forecast vs Actual for {channel}")
+
+        # Plot actual values (test data) with markers
+        plt.scatter(test["ds"], test["y"], color="red", label="Actual", zorder=5)
+
+        # Mark the train/test split
         plt.axvline(
             test["ds"].iloc[0], color="red", linestyle="--", label="Train/Test Split"
         )
+
+        # Add title and legend
+        plt.title(f"Forecast vs Actual for {channel}")
         plt.legend()
 
-        # Save file
+        # Save the plot
         safe_channel = re.sub(r"[^\w\-_.]", "_", channel)
         filename = f"{output_dir}/{safe_channel}.png"
         fig.savefig(filename)
