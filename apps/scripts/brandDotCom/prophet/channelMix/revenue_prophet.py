@@ -34,7 +34,39 @@ def fetch_all_hotel_data(hotel_code: str) -> pd.DataFrame:
     return df
 
 
-def evaluate_forecast(df_channel: pd.DataFrame, model, forecast, test: pd.DataFrame):
+def generate_forecast(df_channel: pd.DataFrame) -> tuple:
+    df_channel["ds"] = pd.to_datetime(df_channel["ds"]).dt.tz_localize(None)
+    df_channel = df_channel.sort_values("ds")
+
+    if len(df_channel) < 6:
+        return None, None, None, None, None
+
+    # Train-test split
+    split_index = int(len(df_channel) * 0.75)
+    train = df_channel.iloc[:split_index]
+    test = df_channel.iloc[split_index:]
+
+    # Fit on full data
+    model = Prophet(yearly_seasonality=True)
+    model.fit(df_channel)
+
+    # Predict on same data points
+    future = df_channel[["ds"]].copy()
+    forecast = model.predict(future)
+
+    # Clip yhat to observed bounds
+    y_min, y_max = df_channel["y"].min(), df_channel["y"].max()
+    forecast["yhat"] = forecast["yhat"].clip(lower=y_min, upper=y_max)
+
+    return model, forecast, train, test, df_channel
+
+
+def evaluate_forecast(
+    df_channel: pd.DataFrame,
+    model: Prophet,
+    forecast: pd.DataFrame,
+    test: pd.DataFrame,
+):
     forecast = forecast[forecast["ds"] <= df_channel["ds"].max()]
     forecast_filtered = (
         forecast[["ds", "yhat"]].set_index("ds").join(test.set_index("ds"))
@@ -60,59 +92,30 @@ def evaluate_forecast(df_channel: pd.DataFrame, model, forecast, test: pd.DataFr
     return mae, rmse, mape
 
 
-def forecast_and_plot(
-    df_channel: pd.DataFrame, hotel_code: str, channel: str, output_dir: str
+def plot_forecast(
+    model: Prophet,
+    forecast: pd.DataFrame,
+    df_channel: pd.DataFrame,
+    test: pd.DataFrame,
+    hotel_code: str,
+    channel: str,
+    output_dir: str,
 ):
-    df_channel["ds"] = pd.to_datetime(df_channel["ds"]).dt.tz_localize(None)
-    df_channel = df_channel.sort_values("ds")
-
-    if len(df_channel) < 6:
-        print(f"Skipping {hotel_code} - {channel} (not enough data)")
-        return
-
-    # Outlier removal
-    upper_limit = df_channel["y"].quantile(0.99)
-    lower_limit = df_channel["y"].quantile(0.01)
-    df_channel = df_channel[
-        (df_channel["y"] >= lower_limit) & (df_channel["y"] <= upper_limit)
-    ]
-
-    split_index = int(len(df_channel) * 0.75)
-    train = df_channel.iloc[:split_index]
-    test = df_channel.iloc[split_index:]
-
-    model = Prophet(
-        yearly_seasonality=True,
-        seasonality_mode="multiplicative",
-        changepoint_prior_scale=0.2,
-        seasonality_prior_scale=5.0,
-    )
-    model.fit(train)
-
-    future = model.make_future_dataframe(periods=len(test), freq="MS")
-    forecast = model.predict(future)
-
-    # Clip to realistic bounds
-    y_min, y_max = train["y"].min(), train["y"].max()
-    forecast["yhat"] = forecast["yhat"].clip(lower=y_min, upper=y_max)
-
-    # Evaluate
-    metrics = evaluate_forecast(df_channel, model, forecast, test)
-    if not metrics:
-        print(f"Skipping {hotel_code} - {channel} (no overlapping forecast/test data)")
-        return
-    mae, rmse, mape = metrics
-    print(f"\n{hotel_code} - {channel}")
-    print(f"MAE: {mae:.2f}, RMSE: {rmse:.2f}, MAPE: {mape:.2f}%")
-
-    # Plot
     fig = model.plot(forecast)
-    plt.scatter(test["ds"], test["y"], color="red", label="Actual", zorder=5)
-    plt.axvline(
-        test["ds"].iloc[0], color="red", linestyle="--", label="Train/Test Split"
+    plt.scatter(
+        df_channel["ds"], df_channel["y"], color="black", label="Actual", zorder=5
     )
 
-    # Tidy x-axis
+    # Mark train/test split
+    split_index = int(len(df_channel) * 0.75)
+    plt.axvline(
+        df_channel["ds"].iloc[split_index],
+        color="red",
+        linestyle="--",
+        label="Train/Test Split",
+    )
+
+    # X-axis formatting
     months = pd.date_range(df_channel["ds"].min(), df_channel["ds"].max(), freq="MS")
     ax = fig.gca()
     ax.set_xticks(months)
@@ -122,13 +125,33 @@ def forecast_and_plot(
     plt.title(f"Forecast vs Actual - {hotel_code} - {channel}")
     plt.legend()
 
-    # Save
+    # Save plot
     os.makedirs(output_dir, exist_ok=True)
     safe_channel = re.sub(r"[^\w\-_.]", "_", channel)
     filename = f"{output_dir}/{safe_channel}.png"
     fig.savefig(filename, bbox_inches="tight")
     plt.close()
     print(f"Saved: {filename}")
+
+
+def forecast_and_plot(
+    df_channel: pd.DataFrame, hotel_code: str, channel: str, output_dir: str
+):
+    model, forecast, train, test, df_channel = generate_forecast(df_channel)
+    if model is None:
+        print(f"Skipping {hotel_code} - {channel} (not enough data)")
+        return
+
+    metrics = evaluate_forecast(df_channel, model, forecast, test)
+    if not metrics:
+        print(f"Skipping {hotel_code} - {channel} (no overlapping forecast/test data)")
+        return
+
+    mae, rmse, mape = metrics
+    print(f"\n{hotel_code} - {channel}")
+    print(f"MAE: {mae:.2f}, RMSE: {rmse:.2f}, MAPE: {mape:.2f}%")
+
+    plot_forecast(model, forecast, df_channel, test, hotel_code, channel, output_dir)
 
 
 def main():
