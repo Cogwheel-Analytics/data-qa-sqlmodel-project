@@ -165,7 +165,7 @@ def main():
 
     for hotel_code, hotel_df in grouped:
         print(f"\n=== Processing {hotel_code} ===")
-        output_dir = f"forecast_plots/{hotel_code}"
+        output_dir = f"forecast_plots/channelMix/Revenue/{hotel_code}"
 
         for channel in hotel_df["channel_type"].unique():
             df_channel = hotel_df[hotel_df["channel_type"] == channel].copy()
