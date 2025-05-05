@@ -19,7 +19,7 @@ def fetch_vnr_data(hotel_code: str) -> pd.DataFrame:
         JOIN public.hotel h ON vnr.hotel_id = h.id
         WHERE vnr.date >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '36 month'
         AND vnr.date < DATE_TRUNC('month', CURRENT_DATE)
-        AND h.code = 'BOSFRUP'
+        AND h.code = :hotel_code
         AND h.is_active = TRUE
         GROUP BY h.code, DATE_TRUNC('month', vnr.date)
         ORDER BY month
@@ -151,7 +151,7 @@ def forecast_vnr_for_hotel(hotel_code: str):
 
 
 def main():
-    hotel_code = "LGBARHW"
+    hotel_code = "BOSFRUP"
     forecast_vnr_for_hotel(hotel_code)
 
 
