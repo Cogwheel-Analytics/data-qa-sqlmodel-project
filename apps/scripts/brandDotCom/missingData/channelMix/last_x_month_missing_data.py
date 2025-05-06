@@ -1,6 +1,7 @@
 from collections import defaultdict
 from sqlmodel import text
 from apps.database import get_session
+from collections import defaultdict
 
 missing_data_query = text(
     """
@@ -44,7 +45,6 @@ def get_hotels_missing_full_channel_mix_months():
 
 missing_rows = get_hotels_missing_full_channel_mix_months()
 
-from collections import defaultdict
 
 hotel_months = defaultdict(list)
 for row in missing_rows:
