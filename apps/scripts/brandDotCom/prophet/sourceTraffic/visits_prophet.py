@@ -19,7 +19,7 @@ def fetch_all_hotel_data(hotel_code: str) -> pd.DataFrame:
         FROM public.source_traffic st
         JOIN public.hotel h ON st.hotel_id = h.id
         JOIN public.source sr ON st.source_id = sr.id
-        WHERE st.date >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '72 month'
+        WHERE st.date >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '36 month'
           AND st.date < DATE_TRUNC('month', CURRENT_DATE)
           AND h.code = :hotel_code
           AND h.is_active = TRUE
