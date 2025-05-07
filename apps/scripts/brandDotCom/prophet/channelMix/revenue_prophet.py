@@ -38,24 +38,36 @@ def generate_forecast(df_channel: pd.DataFrame) -> tuple:
     df_channel["ds"] = pd.to_datetime(df_channel["ds"]).dt.tz_localize(None)
     df_channel = df_channel.sort_values("ds")
 
-    if len(df_channel) < 6:
+    # Fill missing months with NaN
+    all_months = pd.date_range(
+        start=df_channel["ds"].min(), end=df_channel["ds"].max(), freq="MS"
+    )
+    df_channel = df_channel.set_index("ds").reindex(all_months).reset_index()
+    df_channel.rename(columns={"index": "ds"}, inplace=True)
+
+    # Keep other columns intact
+    df_channel["hotel_code"] = df_channel["hotel_code"].fillna(method="ffill")
+    df_channel["channel_type"] = df_channel["channel_type"].fillna(method="ffill")
+
+    if df_channel["y"].notna().sum() < 6:
         return None, None, None, None, None
 
-    # Train-test split
-    split_index = int(len(df_channel) * 0.75)
-    train = df_channel.iloc[:split_index]
-    test = df_channel.iloc[split_index:]
+    # Train-test split on non-null y values
+    df_non_null = df_channel[df_channel["y"].notna()]
+    split_index = int(len(df_non_null) * 0.75)
+    train = df_non_null.iloc[:split_index]
+    test = df_non_null.iloc[split_index:]
 
     # Fit model
     model = Prophet(yearly_seasonality=True)
-    model.fit(df_channel)
+    model.fit(df_channel[["ds", "y"]])  # Prophet can handle NaN in y
 
-    # Forecast into the future (1 months ahead)
+    # Forecast into the future (1 month ahead)
     future = model.make_future_dataframe(periods=1, freq="MS")
     forecast = model.predict(future)
 
-    # Clip predictions
-    y_min, y_max = df_channel["y"].min(), df_channel["y"].max()
+    # Clip predictions within range of observed y
+    y_min, y_max = df_non_null["y"].min(), df_non_null["y"].max()
     forecast["yhat"] = forecast["yhat"].clip(lower=y_min, upper=y_max)
 
     return model, forecast, train, test, df_channel
