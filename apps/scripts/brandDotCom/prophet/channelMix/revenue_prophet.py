@@ -46,15 +46,15 @@ def generate_forecast(df_channel: pd.DataFrame) -> tuple:
     train = df_channel.iloc[:split_index]
     test = df_channel.iloc[split_index:]
 
-    # Fit on full data
+    # Fit model
     model = Prophet(yearly_seasonality=True)
     model.fit(df_channel)
 
-    # Predict on same data points
-    future = df_channel[["ds"]].copy()
+    # Forecast into the future (1 months ahead)
+    future = model.make_future_dataframe(periods=1, freq="MS")
     forecast = model.predict(future)
 
-    # Clip yhat to observed bounds
+    # Clip predictions
     y_min, y_max = df_channel["y"].min(), df_channel["y"].max()
     forecast["yhat"] = forecast["yhat"].clip(lower=y_min, upper=y_max)
 
@@ -67,7 +67,7 @@ def evaluate_forecast(
     forecast: pd.DataFrame,
     test: pd.DataFrame,
 ):
-    forecast = forecast[forecast["ds"] <= df_channel["ds"].max()]
+    # Restrict forecast to actual known data range
     forecast_filtered = (
         forecast[["ds", "yhat"]].set_index("ds").join(test.set_index("ds"))
     )
@@ -106,7 +106,7 @@ def plot_forecast(
         df_channel["ds"], df_channel["y"], color="black", label="Actual", zorder=5
     )
 
-    # Mark train/test split
+    # Train/Test split marker
     split_index = int(len(df_channel) * 0.75)
     plt.axvline(
         df_channel["ds"].iloc[split_index],
@@ -115,8 +115,16 @@ def plot_forecast(
         label="Train/Test Split",
     )
 
+    # Forecast start marker
+    plt.axvline(
+        df_channel["ds"].max(),
+        color="blue",
+        linestyle=":",
+        label="Forecast Start",
+    )
+
     # X-axis formatting
-    months = pd.date_range(df_channel["ds"].min(), df_channel["ds"].max(), freq="MS")
+    months = pd.date_range(forecast["ds"].min(), forecast["ds"].max(), freq="MS")
     ax = fig.gca()
     ax.set_xticks(months)
     ax.set_xticklabels(
