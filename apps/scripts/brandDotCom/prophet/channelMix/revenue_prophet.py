@@ -46,8 +46,8 @@ def generate_forecast(df_channel: pd.DataFrame) -> tuple:
     df_channel.rename(columns={"index": "ds"}, inplace=True)
 
     # Keep other columns intact
-    df_channel["hotel_code"] = df_channel["hotel_code"].fillna(method="ffill")
-    df_channel["channel_type"] = df_channel["channel_type"].fillna(method="ffill")
+    df_channel["hotel_code"] = df_channel["hotel_code"].ffill()
+    df_channel["channel_type"] = df_channel["channel_type"].ffill()
 
     if df_channel["y"].notna().sum() < 6:
         return None, None, None, None, None
