@@ -63,5 +63,5 @@ else:
 export_hotel_months_to_csv(
     hotel_months,
     "missing_channel_mix_custom_summary.csv",
-    folder="csv_exports/channelMix/customMonths",
+    folder="csv_exports/brandDotCom/missingData/channelMix/customMonths",
 )

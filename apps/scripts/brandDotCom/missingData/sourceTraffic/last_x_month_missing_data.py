@@ -95,5 +95,5 @@ else:
 export_hotel_months_to_csv(
     hotel_months,
     "missing_source_taffic_summary.csv",
-    folder="csv_exports/sourceTraffic/lastXmonths",
+    folder="csv_exports/brandDotCom/missingData/sourceTraffic/lastXmonths",
 )

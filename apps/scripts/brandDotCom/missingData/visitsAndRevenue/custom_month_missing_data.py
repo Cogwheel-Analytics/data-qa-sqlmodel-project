@@ -70,5 +70,5 @@ else:
 export_hotel_months_to_csv(
     hotel_months,
     "missing_vnr_custom_summary.csv",
-    folder="csv_exports/VNR/customMonths",
+    folder="csv_exports/brandDotCom/missingData/VNR/customMonths",
 )

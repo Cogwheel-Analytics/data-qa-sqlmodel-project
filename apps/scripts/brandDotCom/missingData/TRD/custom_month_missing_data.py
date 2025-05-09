@@ -78,5 +78,5 @@ else:
 export_hotel_months_to_csv(
     hotel_months,
     "missing_trd_custom_summary.csv",
-    folder="csv_exports/TRD/customMonths",
+    folder="csv_exports/brandDotCom/missingData/TRD/customMonths",
 )
