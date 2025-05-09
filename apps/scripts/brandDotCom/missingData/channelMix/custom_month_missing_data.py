@@ -1,6 +1,7 @@
 from collections import defaultdict
 from sqlmodel import text
 from apps.database import get_session
+from apps.utils.csv_export import export_hotel_months_to_csv
 
 
 def get_missing_data_for_months(month_list):
@@ -58,3 +59,9 @@ if hotel_months:
         print(f"Hotel Code: {hotel_code}, Missing Months: {months}")
 else:
     print("All active hotels have channel mix data for the selected months.")
+
+export_hotel_months_to_csv(
+    hotel_months,
+    "missing_channel_mix_custom_summary.csv",
+    folder="csv_exports/channelMix/customMonths",
+)

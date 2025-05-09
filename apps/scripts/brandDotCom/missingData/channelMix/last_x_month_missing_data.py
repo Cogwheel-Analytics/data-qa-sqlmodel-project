@@ -3,6 +3,8 @@ from sqlmodel import text
 from apps.database import get_session
 from collections import defaultdict
 
+from apps.utils.csv_export import export_hotel_months_to_csv
+
 missing_data_query = text(
     """
     WITH months AS (
@@ -56,3 +58,10 @@ if hotel_months:
         print(f"Hotel Code: {hotel_code}, Missing Months: {months}")
 else:
     print("All active hotels have channel mix data for the past 6 months.")
+
+
+export_hotel_months_to_csv(
+    hotel_months,
+    "missing_channel_mix_summary.csv",
+    folder="csv_exports/channelMix/lastXmonths",
+)
