@@ -1,6 +1,7 @@
 from collections import defaultdict
 from sqlmodel import text
 from apps.database import get_session
+from apps.utils.csv_export import export_hotel_months_to_csv
 
 # List your OTA normalized_source names here for easy access
 DEFAULT_OTA_SOURCES = [
@@ -96,3 +97,10 @@ if hotel_months:
         print(f"Hotel Code: {hotel_code}, Missing Months: {months}")
 else:
     print("All active hotels have OTA data for the past 6 months.")
+
+
+export_hotel_months_to_csv(
+    hotel_months,
+    "missing_OTA_summary.csv",
+    folder="csv_exports/paidMedia/missingData/OTA/lastXmonths",
+)

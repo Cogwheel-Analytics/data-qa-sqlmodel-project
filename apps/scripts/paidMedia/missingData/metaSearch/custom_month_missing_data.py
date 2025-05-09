@@ -1,6 +1,7 @@
 from collections import defaultdict
 from sqlmodel import text
 from apps.database import get_session
+from apps.utils.csv_export import export_hotel_months_to_csv
 
 DEFAULT_META_SOURCES = [
     "Google Hotel Ads (MetaSearch)",
@@ -91,3 +92,9 @@ if hotel_months:
         print(f"Hotel Code: {hotel_code}, Missing Months: {months}")
 else:
     print("All active hotels have meta search data for the selected months.")
+
+export_hotel_months_to_csv(
+    hotel_months,
+    "missing_meta_search_custom_summary.csv",
+    folder="csv_exports/paidMedia/missingData/MetaSearch/customMonths",
+)
