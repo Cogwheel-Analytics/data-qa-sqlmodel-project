@@ -1,6 +1,7 @@
 from collections import defaultdict
 from sqlmodel import text
 from apps.database import get_session
+from apps.utils.csv_export import export_hotel_months_to_csv
 
 # SQL Query to find missing source_traffic data for the last 6 months
 query = text(
@@ -90,3 +91,9 @@ if hotel_months:
         print(f"Hotel Code: {hotel_code}, Missing Months: {months}")
 else:
     print("All active hotels have source traffic data for the past 6 months.")
+
+export_hotel_months_to_csv(
+    hotel_months,
+    "missing_source_taffic_summary.csv",
+    folder="csv_exports/sourceTraffic/lastXmonths",
+)
