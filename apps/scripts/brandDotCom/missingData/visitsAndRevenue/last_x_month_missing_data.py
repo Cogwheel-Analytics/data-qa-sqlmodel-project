@@ -3,6 +3,8 @@ from sqlmodel import text
 from apps.database import get_session
 from collections import defaultdict
 
+from apps.utils.csv_export import export_hotel_months_to_csv
+
 
 query = text(
     """
@@ -93,3 +95,9 @@ if hotel_months:
         print(f"Hotel Code: {hotel_code}, Missing Months: {months}")
 else:
     print("All active hotels have visits and revenue data for the past 6 months.")
+
+export_hotel_months_to_csv(
+    hotel_months,
+    "missing_vnr_summary.csv",
+    folder="csv_exports/VNR/lastXmonths",
+)
