@@ -8,6 +8,8 @@ import matplotlib.pyplot as plt
 import os
 import re
 
+from apps.utils.csv_export import export_evaluation_metrics_to_csv
+
 
 def fetch_all_hotel_data(hotel_code: str) -> pd.DataFrame:
     query = """
@@ -155,13 +157,14 @@ def forecast_and_plot(
 
 
 def main():
-    hotel_code = "LGBARHW"
+    hotel_code = "BOSFRUP"
     df = fetch_all_hotel_data(hotel_code)
     if df.empty:
         print("No data found.")
         return
 
     grouped = df.groupby("hotel_code")
+    all_metrics = []
 
     for hotel_code, hotel_df in grouped:
         print(f"\n=== Processing {hotel_code} ===")
@@ -169,7 +172,41 @@ def main():
 
         for channel in hotel_df["channel_type"].unique():
             df_channel = hotel_df[hotel_df["channel_type"] == channel].copy()
-            forecast_and_plot(df_channel, hotel_code, channel, output_dir)
+            model, forecast, train, test, df_channel = generate_forecast(df_channel)
+
+            if model is None:
+                print(f"Skipping {hotel_code} - {channel} (not enough data)")
+                continue
+
+            metrics = evaluate_forecast(df_channel, model, forecast, test)
+            if not metrics:
+                print(
+                    f"Skipping {hotel_code} - {channel} (no overlapping forecast/test data)"
+                )
+                continue
+
+            mae, rmse, mape = metrics
+            print(f"\n{hotel_code} - {channel}")
+            print(f"MAE: {mae:.2f}, RMSE: {rmse:.2f}, MAPE: {mape:.2f}%")
+
+            # Collect metrics for export
+            all_metrics.append(
+                {
+                    "Hotel Code": hotel_code,
+                    "Channel Type": channel,
+                    "MAE": round(mae, 2),
+                    "RMSE": round(rmse, 2),
+                    "MAPE (%)": round(mape, 2),
+                }
+            )
+
+            plot_forecast(
+                model, forecast, df_channel, test, hotel_code, channel, output_dir
+            )
+
+    metrics_filename = f"csv_exports/brandDotCom/prophet/channelMix/room_nights/{hotel_code}/evaluation_metrics.csv"
+    os.makedirs(os.path.dirname(metrics_filename), exist_ok=True)
+    export_evaluation_metrics_to_csv(all_metrics, metrics_filename)
 
 
 if __name__ == "__main__":
