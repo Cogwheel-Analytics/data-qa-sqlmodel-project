@@ -1,5 +1,5 @@
 import pandas as pd
-from apps.database import get_session
+from apps.utils.database import get_session
 from sqlalchemy import text
 from prophet import Prophet
 from sklearn.metrics import mean_absolute_error, mean_squared_error

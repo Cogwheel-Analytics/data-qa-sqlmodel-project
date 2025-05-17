@@ -1,6 +1,6 @@
 from collections import defaultdict
 from sqlmodel import text
-from apps.database import get_session
+from apps.utils.database import get_session
 from apps.utils.csv_export import export_hotel_months_to_csv
 
 # SQL Query to find missing source_traffic data for the last 6 months

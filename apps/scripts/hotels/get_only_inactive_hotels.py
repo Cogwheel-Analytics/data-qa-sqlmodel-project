@@ -1,5 +1,5 @@
 from sqlmodel import text
-from apps.database import get_session  # Your session context manager
+from apps.utils.database import get_session  # Your session context manager
 
 # Query to get all inactive hotels
 query = text("SELECT * FROM public.hotel WHERE is_active = FALSE")

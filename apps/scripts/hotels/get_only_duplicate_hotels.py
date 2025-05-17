@@ -1,5 +1,5 @@
 from sqlmodel import text
-from apps.database import get_session  # Import your session manager
+from apps.utils.database import get_session  # Import your session manager
 
 # Query to get all duplicate hotels based on hotel_code
 query = text(

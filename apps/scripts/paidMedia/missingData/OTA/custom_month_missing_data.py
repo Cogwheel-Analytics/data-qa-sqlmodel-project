@@ -1,6 +1,6 @@
 from collections import defaultdict
 from sqlmodel import text
-from apps.database import get_session
+from apps.utils.database import get_session
 from apps.utils.csv_export import export_hotel_months_to_csv
 
 # List your OTA normalized_source names here for easy access

@@ -1,5 +1,5 @@
 from sqlmodel import text
-from apps.database import get_session
+from apps.utils.database import get_session
 
 # Raw SQL query to get all hotels
 query = text("SELECT * FROM public.hotel ORDER BY id ASC;")
